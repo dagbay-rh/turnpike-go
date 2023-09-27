@@ -1,16 +1,33 @@
-build_nginx:
-	go build -o ./nginx/turnpike-nginx-go ./nginx/main.go
+### turnpike
 
-run_nginx: build_nginx
+# build binaries
+build: build_nginx
+
+# build podman images
+build_gobuilder:
+	podman build -t turnpike-gobuilder:latest -f ./Dockerfile.gobuilder .
+
+build_images: build_gobuilder build_nginx_image
+
+# misc
+clean: nginx_clean
+	go clean -cache
+
+### nginx
+build_nginx:
+	go build -o ./turnpike-nginx-go ./nginx/main.go
+
+nginx: build_nginx
 	./nginx/turnpike-nginx-go
 
-nginx_image:
-	podman build -t turnpike-nginx:latest -f ./nginx/Dockerfile ./nginx
-	podman run -p 9090:9090 -d --rm --name=turnpike-nginx turnpike-nginx:latest
+build_nginx_image: build_gobuilder
+	podman build -t turnpike-nginx:latest -f ./Dockerfile.nginx .
 
-nginx_image_kill:
-	podman kill turnpike-nginx
+nginx_image: build_nginx_image
+	podman run -p 9090:9090 -d --name=turnpike-nginx turnpike-nginx:latest
 
-clean:
-	go clean -cache
-	rm nginx/turnpike-nginx-go
+nginx_clean:
+	-rm nginx/turnpike-nginx-go
+	-podman rm turnpike-nginx -f
+
+### go web service
