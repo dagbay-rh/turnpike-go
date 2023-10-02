@@ -1,0 +1,15 @@
+FROM registry.access.redhat.com/ubi8-minimal
+
+RUN microdnf module enable nginx:1.22 && \
+    microdnf install -y nginx && \
+    chmod g+rwx /var/log/nginx && \
+    rm -rf /var/lib/dnf /var/cache/dnf
+
+# go app to build backends
+COPY --from=turnpike-gobuilder:latest /go/src/app/turnpike-nginx-go /turnpike-nginx-go
+
+# nginx server
+COPY ./nginx /etc/nginx
+RUN chgrp -R root /etc/nginx && chmod -R g+rwX /etc/nginx
+
+CMD /turnpike-nginx-go && nginx -g "daemon off;"
